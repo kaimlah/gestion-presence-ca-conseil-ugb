@@ -1,0 +1,4 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
+import PageHeader from "../components/PageHeader";
+export default function AuditLogs(){const [rows,setRows]=useState<any[]>([]);useEffect(()=>{supabase.from("audit_logs").select("*").order("created_at",{ascending:false}).limit(200).then(({data})=>setRows(data||[]));},[]);return <><PageHeader title="Journal d'activité" description="Historique des actions importantes."/><div className="panel table-wrap"><table><thead><tr><th>Action</th><th>Module</th><th>Objet</th><th>Date</th></tr></thead><tbody>{rows.map(r=><tr key={r.id}><td>{r.action}</td><td>{r.module}</td><td>{r.record_id||"—"}</td><td>{new Date(r.created_at).toLocaleString("fr-FR")}</td></tr>)}</tbody></table>{!rows.length&&<div className="empty">Aucune action enregistrée.</div>}</div></> }
