@@ -1,7 +1,7 @@
 // Adresse publique du site : elle sert à fabriquer les liens (carte de membre, QR).
 // Depuis « localhost » ou un réseau local, on utilise l'adresse en ligne, car un
 // lien « localhost » ne s'ouvre pas sur le téléphone des membres.
-export const PUBLIC_SITE_URL = "https://gestion-presences-membres-abdou-diop.netlify.app";
+export const PUBLIC_SITE_URL = "https://gestion-presences-ca-conseil-ugb.netlify.app";
 
 export function siteUrl(): string {
   const host = window.location.hostname;

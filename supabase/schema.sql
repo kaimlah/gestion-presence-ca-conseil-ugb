@@ -229,7 +229,7 @@ create index if not exists activities_start_idx on public.activities(start_datet
 -- Insérer ou mettre à jour le profil administrateur
 insert into public.profiles (id, email, first_name, last_name, role)
 select id, email, 'Admin', 'Principal', 'admin'::public.app_role
-from auth.users where email = 'abdoudii692@gmail.com'
+from auth.users where email = 'diopabdoukarim2021@gmail.com'
 on conflict (id) do update set role = 'admin'::public.app_role;
 
 -- Créer l'organisation (évite le doublon si vous relancez le script)
@@ -308,15 +308,15 @@ delete from auth.users where email = 'admin143@mj-membres.app';
 -- Donner le rôle admin au compte Gmail
 insert into public.profiles (id, email, first_name, last_name, role)
 select id, email, 'Admin', 'Principal', 'admin'::public.app_role
-from auth.users where email = 'abdoudii692@gmail.com'
+from auth.users where email = 'diopabdoukarim2021@gmail.com'
 on conflict (id) do update set role = 'admin', is_active = true;
 
 -- Confirmer le compte
 update auth.users
 set email_confirmed_at = coalesce(email_confirmed_at, now())
-where email = 'abdoudii692@gmail.com';
+where email = 'diopabdoukarim2021@gmail.com';
 
 -- Vérification : doit afficher 1 ligne avec role = admin
 select id, email, role, is_active from public.profiles
-where email = 'abdoudii692@gmail.com';
+where email = 'diopabdoukarim2021@gmail.com';
 
