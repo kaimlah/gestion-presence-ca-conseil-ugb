@@ -131,7 +131,7 @@ export default function Login() {
           }}
         >
           <div>Commission Administrative</div>
-          <div>CONSEIL UGB</div>
+          <div>Conseil UGB</div>
           <div>Comité INTER-UNIVERSITAIRE</div>
         </div>
 
