@@ -6,5 +6,5 @@
 insert into public.profiles (id, email, first_name, last_name, role)
 select id, email, 'Admin', 'Principal', 'admin'::public.app_role
 from auth.users
-where email = 'diopabdoukarim2021@gmail.com'
+where email = 'conseilugb@gmail.com'
 on conflict (id) do update set role = 'admin'::public.app_role, is_active = true;
