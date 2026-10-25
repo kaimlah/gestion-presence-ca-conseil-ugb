@@ -6,7 +6,7 @@ import { loadStats, goudiStreaks, fmtDate, type Streak } from "../lib/stats";
 import { downloadExcel, downloadPdf, type Sheet } from "../lib/report";
 
 const DEFAULT_MESSAGE =
-  "Salam {prenom}, tu as manqué {absences} GOUDI ALJUMAH d'affilée. Tout va bien ? Nous comptons sur toi pour la prochaine séance, in cha Allah.";
+  "Salam {prenom} 😊,\n\nNous avons remarqué ton absence à {absences} GOUDI ALJUMAH consécutifs et nous voulions prendre de tes nouvelles. Nous espérons que tu vas bien, in cha Allah.\n\n 🤲🏽❤️La commission administrative aimerait simplement connaître les raisons de tes absences, afin de mieux comprendre ta situation.\n\n Tu nous manques et nous espérons te retrouver parmi nous lors de la prochaine séance, in cha Allah. Qu’Allah te préserve et te facilite ! 🤲🏽";
 const STORAGE_KEY = "mj_absence_whatsapp_message";
 
 /** Numéro au format international sans « + » (9 chiffres = Sénégal, indicatif 221). */
