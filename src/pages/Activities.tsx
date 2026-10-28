@@ -1,17 +1,18 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Pencil, Plus, QrCode, Repeat, Trash2 } from "lucide-react";
+import { Pencil, Plus, QrCode, Repeat, Trash2, UserPlus } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
 import PageHeader from "../components/PageHeader";
 import RecurringActivities from "../components/RecurringActivities";
+import ActivityGuests from "../components/ActivityGuests";
 import type { Activity as ActivityType } from "../types";
 import { TYPE_ORDER } from "../lib/stats";
 
 // Statut automatique : une activité passe en "terminée" 5 h après sa fin
 // (ou 5 h après son début si aucune heure de fin n'est renseignée).
 const AUTO_CLOSE_HOURS = 5;
-const PUBLIC_SITE_URL = "https://gestion-de-presence-ndiar.netlify.app";
+const PUBLIC_SITE_URL = "https://gestion-presences-ca-conseil-ugb.netlify.app";
 const closeTime = (start: string, end: string | null) => new Date(end || start).getTime() + AUTO_CLOSE_HOURS * 3600 * 1000;
 const effectiveStatus = (a: ActivityType) =>
   a.status === "annulée" ? "annulée"
@@ -25,6 +26,8 @@ export default function Activities({ canDelete = false }: { canDelete?: boolean 
   const [qr,setQr]=useState<ActivityType|null>(null);
   const [editId,setEditId]=useState<string|null>(null);
   const [recurOpen,setRecurOpen]=useState(false);
+  const [guestsFor,setGuestsFor]=useState<ActivityType|null>(null);
+  const [guestCounts,setGuestCounts]=useState<Record<string,number>>({});
   const [tab,setTab]=useState<"all"|"today"|"upcoming"|"past">("all");
   const [types,setTypes]=useState<{id:string;name:string}[]>([]);
   const empty={name:"",location:"",start_datetime:"",end_datetime:"",status:"prévue",cancelled:false,activity_type_id:""};
@@ -41,6 +44,10 @@ export default function Activities({ canDelete = false }: { canDelete?: boolean 
     await supabase.rpc("refresh_activity_status"); // met à jour les statuts (prévue / en cours / terminée)
     const {data}=await supabase.from("activities").select("*").order("start_datetime",{ascending:false});
     setItems((data as ActivityType[])||[]);
+    const {data:g}=await supabase.from("activity_guests").select("activity_id");   // ignoré si la table n'existe pas encore
+    const counts:Record<string,number>={};
+    ((g||[]) as {activity_id:string}[]).forEach(r=>{counts[r.activity_id]=(counts[r.activity_id]||0)+1;});
+    setGuestCounts(counts);
   }
   useEffect(()=>{load()},[]);
 
@@ -94,19 +101,21 @@ export default function Activities({ canDelete = false }: { canDelete?: boolean 
         <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0,flexWrap:"wrap"}}>
           <span className={`badge${st==="en cours"?" active":""}`}>{st==="en cours"?"● en cours":st}</span>
           {st!=="annulée"&&<button type="button" className="secondary" onClick={()=>setQr(a)}><QrCode size={16}/> QR</button>}
+          <button type="button" className="secondary" onClick={()=>setGuestsFor(a)}><UserPlus size={16}/> Invités{guestCounts[a.id]?` (${guestCounts[a.id]})`:""}</button>
           {st!=="annulée"&&<Link to="/attendance" className="primary" style={{textDecoration:"none"}}>Faire l'appel</Link>}
         </div>
       </div>;})}
     </div>
 
     <div className="type-tabs">{tabs.map(([k,l])=><button type="button" key={k} className={`type-tab${tab===k?" on":""}`} onClick={()=>setTab(k)}>{l}</button>)}</div>
-    <div className="panel table-wrap"><table><thead><tr><th>Nom</th><th>Type</th><th>Lieu</th><th>Date</th><th>Statut</th><th>QR</th><th>Actions</th></tr></thead><tbody>{shown.map(a=><tr key={a.id} style={effectiveStatus(a)==="en cours"?{background:"#eef8f2"}:undefined}><td>{a.name}</td><td><span className="badge">{typeName(a.activity_type_id)}</span></td><td>{a.location||"—"}</td><td>{new Date(a.start_datetime).toLocaleString("fr-FR")}</td><td><span className={`badge${effectiveStatus(a)==="en cours"?" active":""}`}>{effectiveStatus(a)==="en cours"?"● en cours":effectiveStatus(a)}</span></td><td><button className="icon-btn" title="Afficher le QR code" onClick={()=>setQr(a)}><QrCode size={17}/></button></td><td><button className="icon-btn" title="Modifier" onClick={()=>openEdit(a)}><Pencil size={17}/></button>{canDelete&&<button className="icon-btn danger" title="Supprimer" onClick={()=>remove(a.id)}><Trash2 size={17}/></button>}</td></tr>)}</tbody></table>{!shown.length&&<div className="empty">Aucune activité.</div>}</div>
+    <div className="panel table-wrap"><table><thead><tr><th>Nom</th><th>Type</th><th>Lieu</th><th>Date</th><th>Statut</th><th>QR</th><th>Actions</th></tr></thead><tbody>{shown.map(a=><tr key={a.id} style={effectiveStatus(a)==="en cours"?{background:"#eef8f2"}:undefined}><td>{a.name}</td><td><span className="badge">{typeName(a.activity_type_id)}</span></td><td>{a.location||"—"}</td><td>{new Date(a.start_datetime).toLocaleString("fr-FR")}</td><td><span className={`badge${effectiveStatus(a)==="en cours"?" active":""}`}>{effectiveStatus(a)==="en cours"?"● en cours":effectiveStatus(a)}</span></td><td><button className="icon-btn" title="Afficher le QR code" onClick={()=>setQr(a)}><QrCode size={17}/></button></td><td><button className="icon-btn" title="Invités (non-membres)" onClick={()=>setGuestsFor(a)} style={{width:"auto",display:"inline-flex",alignItems:"center",gap:4}}><UserPlus size={17}/>{guestCounts[a.id]?<span className="badge">{guestCounts[a.id]}</span>:null}</button><button className="icon-btn" title="Modifier" onClick={()=>openEdit(a)}><Pencil size={17}/></button>{canDelete&&<button className="icon-btn danger" title="Supprimer" onClick={()=>remove(a.id)}><Trash2 size={17}/></button>}</td></tr>)}</tbody></table>{!shown.length&&<div className="empty">Aucune activité.</div>}</div>
     {open&&<div className="modal-backdrop"><form className="modal" onSubmit={save}><div className="modal-head"><h2>{editId?"Modifier l'activité":"Nouvelle activité"}</h2><button type="button" className="icon-btn" onClick={closeForm}>×</button></div>
       <div className="form-grid"><label>Type d'activité<select required value={form.activity_type_id} onChange={e=>{const id=e.target.value;setForm({...form,activity_type_id:id,name:form.name||types.find(t=>t.id===id)?.name||""})}}><option value="">— Choisir —</option>{types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><label>Nom<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Lieu<input value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/></label><label>Date/heure de début<input required type="datetime-local" value={form.start_datetime} onChange={e=>setForm({...form,start_datetime:e.target.value})}/></label><label>Date/heure de fin<input type="datetime-local" value={form.end_datetime} onChange={e=>setForm({...form,end_datetime:e.target.value})}/></label>{editId&&<label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" style={{width:"auto"}} checked={form.cancelled} onChange={e=>setForm({...form,cancelled:e.target.checked})}/> Activité annulée</label>}</div>
       <p className="muted" style={{margin:"12px 0 0"}}>Le statut est automatique (prévue, en cours, terminée).{limit&&!isNaN(limit.getTime())?` Cette activité passera en « terminée » le ${limit.toLocaleString("fr-FR",{dateStyle:"medium",timeStyle:"short"})}, ${AUTO_CLOSE_HOURS} h après sa fin (ou après son début si aucune fin n'est indiquée).`:""}</p>
       <div className="modal-actions"><button type="button" className="secondary" onClick={closeForm}>Annuler</button><button className="primary">{editId?"Enregistrer les modifications":"Enregistrer"}</button></div>
     </form></div>}
-    {qr&&<div className="modal-backdrop" onClick={()=>setQr(null)}><div className="modal" style={{textAlign:"center",width:"min(420px,100%)"}} onClick={e=>e.stopPropagation()}><div className="modal-head"><h2>{qr.name}</h2><button type="button" className="icon-btn" onClick={()=>setQr(null)}>×</button></div><div style={{background:"#fff",padding:16,display:"inline-block",borderRadius:12,border:"1px solid #e6e8ec"}}><QRCodeSVG value={qrLink(qr)} size={260} level="M"/></div><p className="muted">Les membres scannent ce code pour se marquer présents, de 30 minutes avant le début jusqu'à la fin.</p><p style={{fontSize:12,wordBreak:"break-all",color:"#667085",margin:"0 0 12px"}}>{qrLink(qr)}</p><button type="button" className="secondary full" onClick={()=>navigator.clipboard.writeText(qrLink(qr)).then(()=>alert("Lien copié"))}>Copier le lien</button></div></div>}
+    {qr&&<div className="modal-backdrop" onClick={()=>setQr(null)}><div className="modal" style={{textAlign:"center",width:"min(420px,100%)"}} onClick={e=>e.stopPropagation()}><div className="modal-head"><h2>{qr.name}</h2><button type="button" className="icon-btn" onClick={()=>setQr(null)}>×</button></div><div style={{background:"#fff",padding:16,display:"inline-block",borderRadius:12,border:"1px solid #e6e8ec"}}><QRCodeSVG value={qrLink(qr)} size={260} level="M"/></div><p className="muted">Les membres scannent ce code pour se marquer présents, de 30 minutes avant le début jusqu'à la fin de l'activité (statut « terminée »).</p><p style={{fontSize:12,wordBreak:"break-all",color:"#667085",margin:"0 0 12px"}}>{qrLink(qr)}</p><button type="button" className="secondary full" onClick={()=>navigator.clipboard.writeText(qrLink(qr)).then(()=>alert("Lien copié"))}>Copier le lien</button></div></div>}
+    {guestsFor&&<ActivityGuests activity={guestsFor} onClose={()=>setGuestsFor(null)} onChanged={load}/>}
     {recurOpen&&<RecurringActivities types={types} onClose={()=>setRecurOpen(false)} onChanged={load}/>}
   </>;
 }

@@ -51,7 +51,7 @@ export default function MemberCard() {
               <QRCodeSVG value={`MJM:${token}`} size={240} level="M" />
             </div>
             <p className="muted" style={{ fontSize: 13, margin: "16px 0 0" }}>
-              Présente ce QR code à l'entrée. Monte la luminosité de ton écran et ne le partage avec personne.
+              Présente ce QR code à chaque activité. Monte la luminosité de ton écran et ne le partage avec personne.
             </p>
           </>
         )}
