@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Check, MapPin, ScanLine, Search, UserPlus, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, MapPin, QrCode, ScanLine, Search, UserPlus, X } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
+import { siteUrl } from "../lib/site";
 import PageHeader from "../components/PageHeader";
 import ActivityGuests from "../components/ActivityGuests";
 import type { Activity } from "../types";
@@ -33,6 +35,7 @@ export default function Attendance() {
   const [query, setQuery] = useState("");
   const [info, setInfo] = useState("");
   const [showGuests, setShowGuests] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const [guestCount, setGuestCount] = useState(0);
 
   useEffect(() => {
@@ -65,6 +68,7 @@ export default function Attendance() {
 
   useEffect(() => {
     setShowGuests(false);
+    setShowQr(false);
     void loadGuestCount();
   }, [selected]);
 
@@ -193,12 +197,38 @@ export default function Attendance() {
             <Link to={`/scan?activity=${selected}`} className="primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", padding: "10px 14px", borderRadius: 10 }}>
               <ScanLine size={16} /> Scanner
             </Link>
+            <button type="button" className="primary" onClick={() => setShowQr(true)}>
+              <QrCode size={16} /> QR code
+            </button>
             <button type="button" className="primary" onClick={() => setShowGuests(true)}>
               <UserPlus size={16} /> Invités{guestCount > 0 ? ` (${guestCount})` : ""}
             </button>
           </div>
         </div>
       )}
+
+      {showQr && current && (() => {
+        const link = `${siteUrl()}/checkin/${current.qr_token}`;
+        return (
+          <div className="modal-backdrop" onClick={() => setShowQr(false)}>
+            <div className="modal" style={{ textAlign: "center", width: "min(480px,100%)" }} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-head">
+                <h2>{current.name}</h2>
+                <button type="button" className="icon-btn" aria-label="Fermer" onClick={() => setShowQr(false)}>×</button>
+              </div>
+              <div style={{ background: "#fff", padding: 16, display: "inline-block", borderRadius: 12, border: "1px solid #e6e8ec" }}>
+                <QRCodeSVG value={link} size={300} level="M" />
+              </div>
+              <p className="muted">Les membres scannent ce code pour se marquer présents, de 30 minutes avant le début jusqu'à la fin de l'activité.</p>
+              <p style={{ fontSize: 12, wordBreak: "break-all", color: "#667085", margin: "0 0 12px" }}>{link}</p>
+              <button type="button" className="secondary full"
+                onClick={() => navigator.clipboard.writeText(link).then(() => setInfo("Lien copié"), () => setInfo("Copie impossible"))}>
+                Copier le lien
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {showGuests && current && (
         <ActivityGuests activity={current} onClose={() => setShowGuests(false)} onChanged={loadGuestCount} />
