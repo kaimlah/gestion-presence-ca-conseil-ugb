@@ -5,10 +5,11 @@
 -- Règles :
 --  * prévue    : avant l'heure de début ;
 --  * en cours  : à partir du début ;
---  * terminée  : 5 h après la FIN (ou 5 h après le DÉBUT s'il n'y a pas d'heure de fin) ;
+--  * terminée  : dès l'heure de FIN (ou 4 h après le DÉBUT s'il n'y a pas d'heure de fin),
+--                comme la fermeture du pointage par QR code ;
 --  * annulée   : choisie à la main (case « Activité annulée »), jamais modifiée par l'automatique.
 -- Les activités terminées restent modifiables.
--- Pour changer la durée, remplacez les deux « 5 hours » ci-dessous.
+-- Pour changer la durée sans heure de fin, remplacez « 4 hours » ci-dessous.
 -- ============================================================
 
 -- 0) Nettoyage éventuel d'une version précédente qui verrouillait les activités
@@ -24,7 +25,7 @@ begin
   update public.activities
      set status = 'terminée'
    where status in ('prévue', 'en cours')
-     and now() >= coalesce(end_datetime, start_datetime) + interval '5 hours';
+     and now() >= coalesce(end_datetime, start_datetime + interval '4 hours');
 
   update public.activities
      set status = 'en cours'
@@ -43,3 +44,5 @@ select public.refresh_activity_status();
 --    n'ouvre le site. Activez d'abord pg_cron : Database > Extensions > pg_cron,
 --    puis retirez les deux tirets devant la ligne suivante.
  select cron.schedule('refresh-activity-status', '*/10 * * * *', 'select public.refresh_activity_status()');
+
+ 

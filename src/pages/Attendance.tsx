@@ -13,15 +13,16 @@ type Mark = "Présent" | "Absent";
 
 type Group = 0 | 1 | 2; // 0 = en cours, 1 = à venir, 2 = passée / annulée
 
-// Une activité est « en cours » si son statut le dit, ou si l'heure actuelle est
-// entre le début et la fin (4 h après le début si aucune fin n'est renseignée).
+// Règle unique (la même que le pointage QR et le statut en base) :
+//  en cours = du début jusqu'à la fin (4 h après le début s'il n'y a pas de fin) ;
+//  à venir = avant le début ; passée = après la fin, terminée ou annulée.
 function groupOf(a: Activity, now: number): Group {
   if (a.status === "annulée" || a.status === "terminée") return 2;
   const start = new Date(a.start_datetime).getTime();
   const end = a.end_datetime ? new Date(a.end_datetime).getTime() : start + 4 * 3600_000;
-  if (a.status === "en cours" || (start <= now && now <= end)) return 0;
-  if (start > now) return 1;
-  return 2;
+  if (now > end) return 2;
+  if (now >= start) return 0;
+  return 1;
 }
 
 const GROUP_LABEL: Record<Group, string> = { 0: "En cours", 1: "À venir", 2: "Passées" };
