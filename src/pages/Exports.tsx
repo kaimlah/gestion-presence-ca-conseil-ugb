@@ -22,6 +22,17 @@ type AttendanceRow = {
 type ExportKind = "members" | "activities" | "attendance";
 
 const dateText = (value?: string | null) => value ? new Date(value).toLocaleString("fr-FR") : "—";
+const MEMBER_FILTER_FIELDS = [
+  ["first_name", "Prénom"], ["last_name", "Nom"], ["email", "E-mail"],
+  ["phone", "Téléphone"], ["locality", "Localité"], ["function_name", "Fonction"],
+] as const;
+type MemberFilters = Record<(typeof MEMBER_FILTER_FIELDS)[number][0], string> & { status: "" | "active" | "inactive" };
+const EMPTY_MEMBER_FILTERS: MemberFilters = {
+  first_name: "", last_name: "", email: "", phone: "", locality: "", function_name: "", status: "",
+};
+// Comparaison sans accents ni majuscules
+const fold = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Une erreur inattendue est survenue.";
 
 export default function Exports() {
@@ -34,6 +45,7 @@ export default function Exports() {
   const [notice, setNotice] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [mf, setMf] = useState<MemberFilters>(EMPTY_MEMBER_FILTERS);
 
   const loadData = async () => {
     setLoading(true); setError(""); setNotice("");
@@ -62,8 +74,19 @@ export default function Exports() {
     return (!from || day >= from) && (!to || day <= to);
   }), [attendance, from, to]);
 
+  const filteredMembers = useMemo(() => members.filter(m => {
+    if (mf.status && m.status !== mf.status) return false;
+    return MEMBER_FILTER_FIELDS.every(([key]) => {
+      const wanted = fold(mf[key]);
+      if (!wanted) return true;
+      const value = key === "phone" ? String(m.phone ?? "").replace(/\s/g, "") : fold(m[key]);
+      return key === "phone" ? value.includes(wanted.replace(/\s/g, "")) : value.includes(wanted);
+    });
+  }), [members, mf]);
+  const memberFiltersActive = mf.status !== "" || MEMBER_FILTER_FIELDS.some(([key]) => mf[key].trim() !== "");
+
   const getRows = () => {
-    if (kind === "members") return members.map(m => ({
+    if (kind === "members") return filteredMembers.map(m => ({
       "Prénom": m.first_name, "Nom": m.last_name,
       "E-mail": m.email ?? "", "Téléphone": m.phone ?? "", "Localité": m.locality ?? "",
       "Fonction": m.function_name ?? "", "Statut": m.status === "active" ? "Actif" : "Inactif",
@@ -129,6 +152,18 @@ export default function Exports() {
             <option value="attendance">Présences</option><option value="members">Membres</option><option value="activities">Activités</option>
           </select>
         </label>
+        {kind === "members" && <>
+          {MEMBER_FILTER_FIELDS.map(([key, text]) => (
+            <label key={key}>{text} (filtre)
+              <input value={mf[key]} placeholder={`Contient…`} onChange={e => setMf({ ...mf, [key]: e.target.value })} />
+            </label>
+          ))}
+          <label>Statut
+            <select value={mf.status} onChange={e => setMf({ ...mf, status: e.target.value as MemberFilters["status"] })}>
+              <option value="">Tous</option><option value="active">Actif</option><option value="inactive">Inactif</option>
+            </select>
+          </label>
+        </>}
         {kind === "attendance" && <>
           <label>Date de début (facultatif)<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
           <label>Date de fin (facultatif)<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
@@ -139,6 +174,12 @@ export default function Exports() {
         <button className="button secondary" onClick={exportPdf} disabled={loading}><FileText size={17} /> Exporter en PDF</button>
         <button className="button secondary" onClick={() => void loadData()} disabled={loading}><RefreshCw size={17} /> {loading ? "Chargement…" : "Actualiser les données"}</button>
       </div>
+      {kind === "members" && (
+        <p className="muted" style={{ marginTop: 14 }}>
+          {filteredMembers.length} membre(s) sur {members.length} seront exportés.{" "}
+          {memberFiltersActive && <button type="button" className="secondary" onClick={() => setMf(EMPTY_MEMBER_FILTERS)}>Réinitialiser les filtres</button>}
+        </p>
+      )}
       {error && <p role="alert" className="error-text" style={{ marginTop: 14 }}>{error}</p>}
       {notice && <p role="status" className="success-text" style={{ marginTop: 14 }}>{notice}</p>}
       <p className="muted" style={{ marginTop: 14 }}>Données disponibles : {members.length} membres · {activities.length} activités · {filteredAttendance.length} lignes de présence correspondant aux filtres. Les exports sont générés dans ton navigateur à partir des données accessibles avec ton compte.</p>
