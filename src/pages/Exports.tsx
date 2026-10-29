@@ -64,7 +64,7 @@ export default function Exports() {
 
   const getRows = () => {
     if (kind === "members") return members.map(m => ({
-      "N° membre": m.member_number, "Prénom": m.first_name, "Nom": m.last_name,
+      "Prénom": m.first_name, "Nom": m.last_name,
       "E-mail": m.email ?? "", "Téléphone": m.phone ?? "", "Localité": m.locality ?? "",
       "Fonction": m.function_name ?? "", "Statut": m.status === "active" ? "Actif" : "Inactif",
     }));
@@ -86,7 +86,7 @@ export default function Exports() {
     return sorted.map(p => ({
       "Ordre": p.check_in_at ? (counters[p.activities?.start_datetime ?? ""] = (counters[p.activities?.start_datetime ?? ""] ?? 0) + 1) : "",
       "Activité": p.activities?.name ?? "Activité supprimée", "Date activité": dateText(p.activities?.start_datetime),
-      "N° membre": p.members?.member_number ?? "", "Prénom": p.members?.first_name ?? "",
+      "Prénom": p.members?.first_name ?? "",
       "Nom": p.members?.last_name ?? "", "Téléphone": p.members?.phone ?? "",
       "Présence": p.status, "Méthode": p.method === "qr" ? "QR Code" : "Manuelle", "Enregistrée le": dateText(p.check_in_at),
     }));
