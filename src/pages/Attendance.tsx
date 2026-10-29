@@ -36,6 +36,7 @@ export default function Attendance() {
   const [info, setInfo] = useState("");
   const [showGuests, setShowGuests] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [excused, setExcused] = useState<Set<string>>(new Set());
   const [guestCount, setGuestCount] = useState(0);
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function Attendance() {
 
   useEffect(() => {
     setMarks({});
+    setExcused(new Set());
     setScanTimes({});
     if (!selected) return;
     let cancelled = false;
@@ -83,11 +85,14 @@ export default function Attendance() {
         if (error) { setInfo("Erreur de chargement : " + error.message); return; }
         const x: Record<string, Mark> = {};
         const t: Record<string, string> = {};
+        const ex = new Set<string>();
         (data || []).forEach((r: any) => {
           if (r.status === "Présent" || r.status === "Absent") x[r.member_id] = r.status;
+          if (r.status === "Excusé") ex.add(r.member_id);
           if (r.status === "Présent" && r.check_in_at) t[r.member_id] = r.check_in_at;
         });
         setMarks(x);
+        setExcused(ex);
         setScanTimes(t);
       });
     return () => { cancelled = true; };
@@ -141,6 +146,14 @@ export default function Attendance() {
     const ids = Object.keys(scanTimes).filter((id) => marks[id] === "Présent").sort((a, b) => scanTimes[a].localeCompare(scanTimes[b]));
     return Object.fromEntries(ids.map((id, i) => [id, i + 1])) as Record<string, number>;
   }, [marks, scanTimes]);
+
+  // Clôture : tous les membres encore non marqués (même cachés par la recherche) passent « Absent ».
+  function closeRoll() {
+    const ids = members.filter((m) => !marks[m.id] && !excused.has(m.id)).map((m) => m.id);
+    if (!ids.length) { setInfo("Tout le monde est déjà marqué."); return; }
+    if (!confirm(`Clôturer l'appel ?\n\n${ids.length} membre(s) non marqué(s) seront enregistrés « Absent ». Les présents ne changent pas.`)) return;
+    void setMany(ids, "Absent");
+  }
 
   const present = members.filter((m) => marks[m.id] === "Présent").length;
   const absent = members.filter((m) => marks[m.id] === "Absent").length;
@@ -246,6 +259,7 @@ export default function Attendance() {
             <div className="att-actions">
               <button className="secondary" onClick={() => setMany(shown.map((m) => m.id), "Présent")}>Tous présents</button>
               <button className="secondary" onClick={() => setMany(shown.map((m) => m.id), "Absent")}>Tous absents</button>
+              <button className="primary" disabled={todo === 0} onClick={closeRoll}>Clôturer l'appel</button>
             </div>
           </div>
 
