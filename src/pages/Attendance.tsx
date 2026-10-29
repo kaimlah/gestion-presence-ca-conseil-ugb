@@ -1,11 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Search, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, CalendarDays, Check, MapPin, ScanLine, Search, UserPlus, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import PageHeader from "../components/PageHeader";
+import ActivityGuests from "../components/ActivityGuests";
 import type { Activity } from "../types";
 
 type MemberName = { id: string; first_name: string; last_name: string };
 type Mark = "Présent" | "Absent";
+
+type Group = 0 | 1 | 2; // 0 = en cours, 1 = à venir, 2 = passée / annulée
+
+// Une activité est « en cours » si son statut le dit, ou si l'heure actuelle est
+// entre le début et la fin (4 h après le début si aucune fin n'est renseignée).
+function groupOf(a: Activity, now: number): Group {
+  if (a.status === "annulée" || a.status === "terminée") return 2;
+  const start = new Date(a.start_datetime).getTime();
+  const end = a.end_datetime ? new Date(a.end_datetime).getTime() : start + 4 * 3600_000;
+  if (a.status === "en cours" || (start <= now && now <= end)) return 0;
+  if (start > now) return 1;
+  return 2;
+}
+
+const GROUP_LABEL: Record<Group, string> = { 0: "En cours", 1: "À venir", 2: "Passées" };
 
 export default function Attendance() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -15,6 +32,8 @@ export default function Attendance() {
   const [scanTimes, setScanTimes] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
   const [info, setInfo] = useState("");
+  const [showGuests, setShowGuests] = useState(false);
+  const [guestCount, setGuestCount] = useState(0);
 
   useEffect(() => {
     supabase.from("activities").select("*").order("start_datetime", { ascending: false })
@@ -22,6 +41,32 @@ export default function Attendance() {
     supabase.rpc("public_member_names")
       .then(({ data }) => setMembers((data as MemberName[]) || []));
   }, []);
+
+  // Ordre : en cours, puis à venir (la plus proche d'abord), puis passées (la plus récente d'abord)
+  const sortedActivities = useMemo(() => {
+    const now = Date.now();
+    const t = (a: Activity) => new Date(a.start_datetime).getTime();
+    return activities
+      .map((a) => ({ a, g: groupOf(a, now) }))
+      .sort((x, y) => {
+        if (x.g !== y.g) return x.g - y.g;
+        return x.g === 1 ? t(x.a) - t(y.a) : t(y.a) - t(x.a);
+      });
+  }, [activities]);
+
+  const current = activities.find((a) => a.id === selected);
+
+  async function loadGuestCount() {
+    if (!selected) { setGuestCount(0); return; }
+    const { count } = await supabase.from("activity_guests")
+      .select("id", { count: "exact", head: true }).eq("activity_id", selected);
+    setGuestCount(count || 0);
+  }
+
+  useEffect(() => {
+    setShowGuests(false);
+    void loadGuestCount();
+  }, [selected]);
 
   useEffect(() => {
     setMarks({});
@@ -99,17 +144,65 @@ export default function Attendance() {
 
   return (
     <>
-      <PageHeader title="Présences" description="Choisis l'activité, puis coche Présent ou Absent. L'enregistrement est automatique." />
-      <div className="panel">
-        <label>Activité
-          <select value={selected} onChange={(e) => setSelected(e.target.value)}>
-            <option value="">— Sélectionner —</option>
-            {activities.map((a) => (
-              <option key={a.id} value={a.id}>{a.name} — {new Date(a.start_datetime).toLocaleDateString("fr-FR")}</option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <PageHeader title="Présences" description="Touche une activité (celle en cours ou la plus proche est en haut), puis coche Présent ou Absent. L'enregistrement est automatique." />
+      {!selected && (
+        <div className="att-activities">
+          {sortedActivities.map(({ a, g }, i) => (
+            <div key={a.id}>
+              {(i === 0 || sortedActivities[i - 1].g !== g) && (
+                <h3 className="muted" style={{ margin: "16px 0 8px" }}>{GROUP_LABEL[g]}</h3>
+              )}
+              <button
+                type="button"
+                className="panel"
+                onClick={() => setSelected(a.id)}
+                style={{
+                  width: "100%", textAlign: "left", cursor: "pointer", marginBottom: 8,
+                  borderLeft: g === 0 ? "4px solid #16a34a" : g === 1 ? "4px solid #2563eb" : undefined,
+                  opacity: g === 2 ? 0.75 : 1,
+                }}
+              >
+                <b>{a.name}</b>
+                {g === 0 && <span className="badge" style={{ marginLeft: 8 }}>En cours</span>}
+                {a.status === "annulée" && <span className="badge" style={{ marginLeft: 8 }}>Annulée</span>}
+                <div className="muted" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 4 }}>
+                  <span><CalendarDays size={14} style={{ verticalAlign: -2 }} />{" "}
+                    {new Date(a.start_datetime).toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  {a.location && <span><MapPin size={14} style={{ verticalAlign: -2 }} /> {a.location}</span>}
+                </div>
+              </button>
+            </div>
+          ))}
+          {!sortedActivities.length && <div className="empty">Aucune activité.</div>}
+        </div>
+      )}
+
+      {selected && (
+        <div className="panel" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <button type="button" className="secondary" onClick={() => { setSelected(""); setQuery(""); setInfo(""); }}>
+            <ArrowLeft size={16} /> Toutes les activités
+          </button>
+          {current && (
+            <div>
+              <b>{current.name}</b>
+              <div className="muted">{new Date(current.start_datetime).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}</div>
+            </div>
+          )}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link to={`/scan?activity=${selected}`} className="primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none", padding: "10px 14px", borderRadius: 10 }}>
+              <ScanLine size={16} /> Scanner
+            </Link>
+            <button type="button" className="primary" onClick={() => setShowGuests(true)}>
+              <UserPlus size={16} /> Invités{guestCount > 0 ? ` (${guestCount})` : ""}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showGuests && current && (
+        <ActivityGuests activity={current} onClose={() => setShowGuests(false)} onChanged={loadGuestCount} />
+      )}
 
       {selected && (
         <>
