@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Activity, BarChart3, ClipboardCheck, FileDown, LayoutDashboard,
-  LogIn, LogOut, UserX, Menu, Settings, Shield, Users, UserCog, X
+  LogIn, LogOut, UserX, Menu, Settings, Users, UserCog, X
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import Footer from "./Footer";
@@ -21,7 +21,6 @@ const privateLinks = [
   ["/members", "Membres", Users],
   ["/exports", "Exports", FileDown],
   ["/users", "Utilisateurs", UserCog],
-  ["/audit-logs", "Journal d'activité", Shield],
   ["/settings", "Paramètres", Settings],
 ] as const;
 

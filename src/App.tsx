@@ -18,7 +18,6 @@ import Statistics from "./pages/Statistics";
 import Absences from "./pages/Absences";
 import Settings from "./pages/Settings";
 import Users from "./pages/Users";
-import AuditLogs from "./pages/AuditLogs";
 import Exports from "./pages/Exports";
 
 // Verrouillage automatique : si la page reste cachée plus de 30 secondes
@@ -46,7 +45,6 @@ function AppRoutes({ session }: { session: Session | null }) {
         <Route path="/members" element={<Protected session={session}><Members /></Protected>} />
         <Route path="/exports" element={<Protected session={session}><Exports /></Protected>} />
         <Route path="/users" element={<Protected session={session}><Users /></Protected>} />
-        <Route path="/audit-logs" element={<Protected session={session}><AuditLogs /></Protected>} />
         <Route path="/settings" element={<Protected session={session}><Settings /></Protected>} />
         <Route path="/scan" element={<Protected session={session}><Scan /></Protected>} />
 
