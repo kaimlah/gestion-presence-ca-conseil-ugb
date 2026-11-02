@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import MemberCardView from "../components/MemberCardView";
 import { MessageCircle, Phone, Plus, QrCode, Search, Trash2, UserCheck, UserRoundPen, UserX, Upload } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import * as XLSX from "xlsx";
 import { supabase } from "../lib/supabase";
 import PageHeader from "../components/PageHeader";
@@ -262,10 +262,7 @@ export default function Members() {
       return <div className="modal-backdrop" onClick={()=>setCardOpen(false)}><div className="modal print-area" style={{width:"min(420px,100%)",textAlign:"center"}} onClick={e=>e.stopPropagation()}>
         <div className="modal-head no-print"><h2>Carte de membre</h2><button type="button" className="icon-btn" onClick={()=>setCardOpen(false)}>×</button></div>
         {!token?<div className="error-box">Carte indisponible : lancez d'abord member_cards.sql dans Supabase.</div>:<>
-          <img className="login-logo" src="/logo.png" alt="Conseil UGB" style={{width:170}}/>
-          <div style={{fontFamily:"var(--font-title)",fontSize:22,fontWeight:700}}>{detail.first_name} {detail.last_name}</div>
-          <div className="muted" style={{fontWeight:700,marginBottom:12}}>{detail.member_number}</div>
-          <div style={{background:"#fff",padding:14,display:"inline-block",borderRadius:14,border:"1px solid #e1e7f0"}}><QRCodeSVG value={`MJM:${token}`} size={220} level="M"/></div>
+          <MemberCardView firstName={detail.first_name} lastName={detail.last_name} memberNumber={detail.member_number} token={token}/>
           <p className="muted no-print" style={{fontSize:12,wordBreak:"break-all",margin:"12px 0"}}>{link}</p>
           <div className="no-print" style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
             {detail.phone&&<a className="primary" style={{textDecoration:"none"}} href={`${waLink(detail.phone)}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noreferrer"><MessageCircle size={16}/> Envoyer par WhatsApp</a>}

@@ -13,7 +13,7 @@ export type Branding = {
 export const DEFAULT_BRANDING: Branding = {
   organization_name: "Moustarchidine Junior",
   section: "Commission Administrative",
-  conseil: "ConseilL UGB",
+  conseil: "Conseil UGB",
   comite: "Comité INTER-UNIVERSITAIRE",
   logo_url: "",
 };

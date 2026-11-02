@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Check, MapPin, QrCode, ScanLine, Search, UserPlus, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, Clock, MapPin, QrCode, ScanLine, Search, UserPlus, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
 import { siteUrl } from "../lib/site";
@@ -25,6 +25,30 @@ function groupOf(a: Activity, now: number): Group {
   return 1;
 }
 
+const bounds = (a: Activity) => {
+  const start = new Date(a.start_datetime).getTime();
+  const end = a.end_datetime ? new Date(a.end_datetime).getTime() : start + 4 * 3600_000;
+  return { start, end };
+};
+
+const fmtDuration = (ms: number) => {
+  const min = Math.max(1, Math.round(ms / 60_000));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h < 24) return m ? `${h} h ${String(m).padStart(2, "0")}` : `${h} h`;
+  const d = Math.round(h / 24);
+  return `${d} jour${d > 1 ? "s" : ""}`;
+};
+
+// Texte de compte à rebours affiché sur les cartes d'activités
+function countdown(a: Activity, now: number, g: Group): string {
+  const { start, end } = bounds(a);
+  if (a.status === "annulée") return "Annulée";
+  if (g === 0) return now - start < 60_000 ? "Vient de commencer" : `Commencée il y a ${fmtDuration(now - start)} · fin dans ${fmtDuration(end - now)}`;
+  if (g === 1) return `Commence dans ${fmtDuration(start - now)}`;
+  return "Terminée";
+}
+
 const GROUP_LABEL: Record<Group, string> = { 0: "En cours", 1: "À venir", 2: "Passées" };
 
 export default function Attendance() {
@@ -37,6 +61,13 @@ export default function Attendance() {
   const [info, setInfo] = useState("");
   const [showGuests, setShowGuests] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Rafraîchit le compte à rebours et le classement toutes les 30 secondes
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
   const [guestCount, setGuestCount] = useState(0);
 
   useEffect(() => {
@@ -48,7 +79,6 @@ export default function Attendance() {
 
   // Ordre : en cours, puis à venir (la plus proche d'abord), puis passées (la plus récente d'abord)
   const sortedActivities = useMemo(() => {
-    const now = Date.now();
     const t = (a: Activity) => new Date(a.start_datetime).getTime();
     return activities
       .map((a) => ({ a, g: groupOf(a, now) }))
@@ -56,7 +86,7 @@ export default function Attendance() {
         if (x.g !== y.g) return x.g - y.g;
         return x.g === 1 ? t(x.a) - t(y.a) : t(y.a) - t(x.a);
       });
-  }, [activities]);
+  }, [activities, now]);
 
   const current = activities.find((a) => a.id === selected);
 
@@ -165,25 +195,19 @@ export default function Attendance() {
               {(i === 0 || sortedActivities[i - 1].g !== g) && (
                 <h3 className="muted" style={{ margin: "16px 0 8px" }}>{GROUP_LABEL[g]}</h3>
               )}
-              <button
-                type="button"
-                className="panel"
-                onClick={() => setSelected(a.id)}
-                style={{
-                  width: "100%", textAlign: "left", cursor: "pointer", marginBottom: 8,
-                  borderLeft: g === 0 ? "4px solid #16a34a" : g === 1 ? "4px solid #2563eb" : undefined,
-                  opacity: g === 2 ? 0.75 : 1,
-                }}
-              >
-                <b>{a.name}</b>
-                {g === 0 && <span className="badge" style={{ marginLeft: 8 }}>En cours</span>}
-                {a.status === "annulée" && <span className="badge" style={{ marginLeft: 8 }}>Annulée</span>}
-                <div className="muted" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 4 }}>
-                  <span><CalendarDays size={14} style={{ verticalAlign: -2 }} />{" "}
+              <button type="button" className={`act-card ${g === 0 ? "live" : g === 1 ? "soon" : "past"}`} onClick={() => setSelected(a.id)}>
+                <div className="act-card-top">
+                  <b>{a.name}</b>
+                  {g === 0 && <span className="live-badge"><i className="live-dot" /> En cours</span>}
+                  {a.status === "annulée" && <span className="badge inactive">Annulée</span>}
+                </div>
+                <div className="act-card-meta">
+                  <span><CalendarDays size={14} />{" "}
                     {new Date(a.start_datetime).toLocaleString("fr-FR", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </span>
-                  {a.location && <span><MapPin size={14} style={{ verticalAlign: -2 }} /> {a.location}</span>}
+                  {a.location && <span><MapPin size={14} /> {a.location}</span>}
                 </div>
+                <div className="act-card-count"><Clock size={14} /> {countdown(a, now, g)}</div>
               </button>
             </div>
           ))}
@@ -198,8 +222,14 @@ export default function Attendance() {
           </button>
           {current && (
             <div>
-              <b>{current.name}</b>
-              <div className="muted">{new Date(current.start_datetime).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}</div>
+              <b>
+                {current.name}
+                {groupOf(current, now) === 0 && <span className="live-badge" style={{ marginLeft: 8 }}><i className="live-dot" /> En cours</span>}
+              </b>
+              <div className="muted">
+                {new Date(current.start_datetime).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })}
+                {" · "}{countdown(current, now, groupOf(current, now))}
+              </div>
             </div>
           )}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -259,6 +289,12 @@ export default function Attendance() {
             </div>
           </div>
 
+          <div className="att-progress" role="progressbar" aria-valuemin={0} aria-valuemax={members.length} aria-valuenow={present}
+            aria-label="Présents">
+            <div className="att-progress-bar"><span style={{ width: `${members.length ? Math.round((present / members.length) * 100) : 0}%` }} /></div>
+            <small>{present} / {members.length} présents{members.length ? ` (${Math.round((present / members.length) * 100)} %)` : ""}</small>
+          </div>
+
           <div className="input-icon search" style={{ marginBottom: 14 }}>
             <Search size={18} />
             <input placeholder="Rechercher un membre…" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -268,7 +304,7 @@ export default function Attendance() {
             {shown.map((m) => {
               const v = marks[m.id];
               return (
-                <div className="att-row" key={m.id}>
+                <div className={`att-row${v === "Présent" ? " is-p" : v === "Absent" ? " is-a" : ""}`} key={m.id}>
                   <span className="att-name">
                     {scanOrder[m.id] ? <b style={{ marginRight: 8 }}>{scanOrder[m.id]}.</b> : null}
                     {m.last_name} {m.first_name}

@@ -405,3 +405,96 @@ body { overflow-x: hidden; }
 }
 .site-footer div:first-child { font-weight: 700; color: var(--ink); }
 .login-card .site-footer { margin-top: 22px; padding: 14px 0 0; }
+/* ---------- Impression : seule la carte de membre est imprimée ---------- */
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: 0; background: transparent; }
+  .no-print { display: none !important; }
+  .member-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ---------- Motif géométrique discret (étoile à 8 branches) ---------- */
+:root {
+  --pattern-brick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23a2443a' stroke-opacity='.07' stroke-width='1'%3E%3Crect x='24' y='24' width='36' height='36'/%3E%3Crect x='24' y='24' width='36' height='36' transform='rotate(45 42 42)'/%3E%3Ccircle cx='42' cy='42' r='7'/%3E%3C/g%3E%3C/svg%3E");
+  --pattern-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cg fill='none' stroke='%23d9a066' stroke-opacity='.11' stroke-width='1'%3E%3Crect x='24' y='24' width='36' height='36'/%3E%3Crect x='24' y='24' width='36' height='36' transform='rotate(45 42 42)'/%3E%3Ccircle cx='42' cy='42' r='7'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Fond des pages : motif très léger, fixe pendant le défilement */
+.main { background-image: var(--pattern-brick); background-attachment: fixed; }
+
+/* Menu latéral : motif doré sous les liens */
+.sidebar::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: var(--pattern-gold);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 85%);
+}
+
+/* En-tête de page : motif qui s'estompe vers la gauche, filet doré en dessous */
+.page-header { position: relative; isolation: isolate; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.page-header::before {
+  content: ""; position: absolute; inset: -12px 0 0 auto; width: min(420px, 60%); z-index: -1; pointer-events: none;
+  background-image: var(--pattern-brick); background-size: 84px 84px;
+  -webkit-mask-image: linear-gradient(270deg, #000 0%, transparent 100%);
+  mask-image: linear-gradient(270deg, #000 0%, transparent 100%);
+}
+.page-header::after {
+  content: ""; position: absolute; left: 0; bottom: -1px; width: 90px; height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+/* Barre du haut et carte de connexion */
+.login-card { position: relative; overflow: hidden; background-image: var(--pattern-brick); }
+.login-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, #d9a066, #f3d9b1, #d9a066);
+}
+
+@media print {
+  .main, .login-card { background-image: none !important; }
+  .page-header::before, .sidebar::before { display: none; }
+}
+
+/* ---------- Page Présences : cartes d'activités et appel plus visuels ---------- */
+.act-card {
+  display: block; width: 100%; text-align: left; cursor: pointer; margin-bottom: 10px;
+  padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface);
+  box-shadow: var(--shadow-sm); font: inherit; color: inherit;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.act-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.act-card:active { transform: scale(.99); }
+.act-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 16px; }
+.act-card-meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; color: var(--muted); font-size: 13.5px; }
+.act-card-meta svg, .act-card-count svg { vertical-align: -2px; }
+.act-card-count { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.act-card.live { border-color: #9bd7b4; background: linear-gradient(135deg, var(--ok-tint), #fff 70%); box-shadow: 0 6px 22px rgba(24, 121, 78, .16); }
+.act-card.live .act-card-count { color: var(--ok); }
+.act-card.soon { border-left: 4px solid var(--gold); }
+.act-card.soon .act-card-count { color: var(--brand); }
+.act-card.past { opacity: .72; }
+
+.live-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  background: var(--ok); color: #fff; font-size: 12px; font-weight: 800;
+}
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; display: inline-block; animation: live-pulse 1.4s ease-out infinite; }
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, .85); }
+  70% { box-shadow: 0 0 0 7px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+.att-progress { margin: 0 0 14px; }
+.att-progress-bar { height: 10px; border-radius: 999px; background: #f1e8e4; overflow: hidden; }
+.att-progress-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--ok), #34b37a); transition: width .35s ease; }
+.att-progress small { display: block; margin-top: 5px; color: var(--muted); font-weight: 700; }
+
+.att-row { padding: 12px 16px; border-left: 4px solid transparent; }
+.att-row.is-p { background: #f3fbf6; border-left-color: var(--ok); }
+.att-row.is-a { background: #fff6f5; border-left-color: var(--bad); }
+.att-btn { min-width: 124px; min-height: 46px; font-size: 15px; border-radius: 12px; }
+.att-btn.on { animation: att-pop .22s ease; }
+@keyframes att-pop { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .live-dot, .att-btn.on { animation: none; } }

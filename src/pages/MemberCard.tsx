@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../lib/supabase";
 import Footer from "../components/Footer";
+import MemberCardView from "../components/MemberCardView";
 
 type Card = {
   found: boolean;
@@ -41,16 +41,13 @@ export default function MemberCard() {
 
         {card?.found && card.active && (
           <>
-            <div style={{ margin: "4px 0 16px" }}>
-              <div style={{ fontFamily: "var(--font-title)", fontSize: 24, fontWeight: 700 }}>
-                {card.first_name} {card.last_name}
-              </div>
-              <div className="muted" style={{ fontWeight: 700, letterSpacing: ".05em" }}>{card.member_number}</div>
-            </div>
-            <div style={{ background: "#fff", padding: 16, borderRadius: 16, border: "1px solid #eadfda", display: "inline-block" }}>
-              <QRCodeSVG value={`MJM:${token}`} size={240} level="M" />
-            </div>
-            <p className="muted" style={{ fontSize: 13, margin: "16px 0 0" }}>
+            <MemberCardView
+              firstName={card.first_name ?? ""}
+              lastName={card.last_name ?? ""}
+              memberNumber={card.member_number ?? ""}
+              token={token}
+            />
+            <p className="muted" style={{ fontSize: 13, margin: "18px 0 0" }}>
               Présente ce QR code à chaque activité. Monte la luminosité de ton écran et ne le partage avec personne.
             </p>
           </>
