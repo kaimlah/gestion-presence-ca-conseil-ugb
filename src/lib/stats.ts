@@ -6,11 +6,11 @@ export const GOUDI = "GOUDI ALJUMAH";
 export type Mem = { id: string; first_name: string; last_name: string };
 export type ActStat = {
   id: string; name: string; start: string; typeName: string; marked: boolean;
-  present: number; absent: number; excused: number; total: number; rate: number;
+  present: number; absent: number; total: number; rate: number;
 };
 export type TypeStat = {
   typeName: string; created: number; held: number;
-  present: number; absent: number; excused: number; rate: number; avgPresent: number;
+  present: number; absent: number; rate: number; avgPresent: number;
 };
 export type Streak = { member: Mem; current: number; max: number; absentDates: string[] };
 export type Row = { activity_id: string; member_id: string; status: string };
@@ -61,14 +61,13 @@ export async function loadStats(): Promise<StatsData> {
       const r = byAct.get(a.id) || [];
       const marked = r.length > 0;
       const present = r.filter((x) => x.status === "Présent").length;
-      const excused = r.filter((x) => x.status === "Excusé").length;
-      // Dans une activité où l'appel a été fait, un membre non marqué est compté absent.
-      const absent = marked ? Math.max(0, N - present - excused) : 0;
+      // Dans une activité où l'appel a été fait, tout membre non « Présent » est compté absent.
+      const absent = marked ? Math.max(0, N - present) : 0;
       const total = marked ? N : 0;
       return {
         id: a.id, name: a.name, start: a.start_datetime,
         typeName: typeName.get(a.activity_type_id) || "AUTRE",
-        marked, present, absent, excused, total,
+        marked, present, absent, total,
         rate: total ? Math.round((present / total) * 100) : 0,
       };
     });
@@ -79,10 +78,9 @@ export async function loadStats(): Promise<StatsData> {
     const h = l.filter((a) => a.marked);
     const present = h.reduce((s, a) => s + a.present, 0);
     const absent = h.reduce((s, a) => s + a.absent, 0);
-    const excused = h.reduce((s, a) => s + a.excused, 0);
-    const tot = present + absent + excused;
+    const tot = present + absent;
     return {
-      typeName: n, created: l.length, held: h.length, present, absent, excused,
+      typeName: n, created: l.length, held: h.length, present, absent,
       rate: tot ? Math.round((present / tot) * 100) : 0,
       avgPresent: h.length ? Math.round((present / h.length) * 10) / 10 : 0,
     };
@@ -99,7 +97,7 @@ export function goudiStreaks(d: StatsData): Streak[] {
     const absentDates: string[] = [];
     sessions.forEach((s) => {
       const st = d.status.get(`${s.id}|${member.id}`);
-      if (st === "Présent" || st === "Excusé") cur = 0;
+      if (st === "Présent") cur = 0;
       else { cur++; max = Math.max(max, cur); absentDates.push(s.start); }
     });
     return { member, current: cur, max, absentDates };

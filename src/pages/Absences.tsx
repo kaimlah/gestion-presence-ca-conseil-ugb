@@ -219,7 +219,7 @@ export default function Absences() {
         </table>
         {!rows.length && <div className="empty">Aucun membre dans ce cas.</div>}
       </div>
-      <p className="muted">« Série en cours » = absences à la suite jusqu'à la dernière séance. Dans une séance où l'appel a été fait, un membre non marqué est compté absent ; « Excusé » interrompt la série.</p>
+      <p className="muted">« Série en cours » = absences à la suite jusqu'à la dernière séance. Dans une séance où l'appel a été fait, un membre non marqué est compté absent .</p>
     </>
   );
 }

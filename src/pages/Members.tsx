@@ -65,18 +65,17 @@ export default function Members() {
   const history=useMemo(()=>{
     if(!detail||!stats||!own)return null;
     const list=stats.acts.filter(a=>a.marked).sort((a,b)=>b.start.localeCompare(a.start))
-      .map(a=>({id:a.id,name:a.name,start:a.start,typeName:a.typeName,status:own[a.id]?.status||"Absent"}));
+      .map(a=>({id:a.id,name:a.name,start:a.start,typeName:a.typeName,status:own[a.id]?.status==="Présent"?"Présent":"Absent"}));
     const present=list.filter(x=>x.status==="Présent").length;
-    const excused=list.filter(x=>x.status==="Excusé").length;
     let streak=0;
-    for(const x of list){if(x.typeName!==GOUDI)continue;if(x.status==="Absent")streak++;else break;}
-    return {list,present,excused,absent:list.length-present-excused,rate:list.length?Math.round(present/list.length*100):0,streak};
+    for(const x of list){if(x.typeName!==GOUDI)continue;if(x.status!=="Présent")streak++;else break;}
+    return {list,present,absent:list.length-present,rate:list.length?Math.round(present/list.length*100):0,streak};
   },[detail,stats,own]);
 
   const ageOf=(d:string|null)=>{if(!d)return null;const b=new Date(d),n=new Date();let a=n.getFullYear()-b.getFullYear();if(n.getMonth()<b.getMonth()||(n.getMonth()===b.getMonth()&&n.getDate()<b.getDate()))a--;return a>=0&&a<120?a:null;};
   const waLink=(p:string)=>{const d=p.replace(/\D/g,"");return `https://wa.me/${d.length===9?"221"+d:d}`;};
   const rateColor=(r:number)=>r>=70?"#18794e":r>=40?"#b54708":"#b42318";
-  const stColor:Record<string,string>={"Présent":"#18794e","Absent":"#b42318","Excusé":"#b54708"};
+  const stColor:Record<string,string>={"Présent":"#18794e","Absent":"#b42318"};
   const linkBtn={display:"inline-flex",alignItems:"center",gap:6,padding:"9px 14px",border:"1px solid #d7dce3",borderRadius:10,color:"#172033",textDecoration:"none",fontWeight:600,fontSize:14,background:"#fff"} as const;
 
   async function load() {
@@ -243,7 +242,6 @@ export default function Members() {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:10}}>{[
           ["Présences",history.present,"#18794e"],
           ["Absences",history.absent,"#b42318"],
-          ["Excusés",history.excused,"#b54708"],
           ["Taux de présence",history.list.length?`${history.rate}%`:"—",history.list.length?rateColor(history.rate):"#667085"],
           ["Absences GOUDI d'affilée",history.streak,history.streak>=3?"#b42318":"#172033"],
         ].map(([l,v,c])=><div key={String(l)} style={{border:"1px solid #e6e8ec",borderRadius:12,padding:"10px 12px"}}><div style={{fontSize:12,color:"#667085"}}>{l}</div><div style={{fontSize:22,fontWeight:700,color:String(c)}}>{v}</div></div>)}</div>

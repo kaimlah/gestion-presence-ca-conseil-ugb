@@ -1,7 +1,7 @@
 export type Role = "admin" | "responsable" | "member";
 export type MemberStatus = "active" | "inactive";
 export type ActivityStatus = "prévue" | "en cours" | "terminée" | "annulée";
-export type AttendanceStatus = "Présent" | "Absent" | "Excusé";
+export type AttendanceStatus = "Présent" | "Absent";
 
 export interface Profile {
   id: string;

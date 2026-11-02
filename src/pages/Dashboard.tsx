@@ -272,7 +272,6 @@ export default function Dashboard() {
               <div className="att-counts" style={{ margin: "12px 0" }}>
                 <span className="c-p">Présents {v.last.present}</span>
                 <span className="c-a">Absents {v.last.absent}</span>
-                <span>Excusés {v.last.excused}</span>
               </div>
               <Bar value={v.last.rate} color={rateColor(v.last.rate)} />
               <Small color={rateColor(v.last.rate)}>Taux de présence : {v.last.rate}%</Small>
