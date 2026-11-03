@@ -1,4 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
+import StatusBadge, { activityKind } from "../components/StatusBadge";
+import EmptyState from "../components/EmptyState";
 import { Link } from "react-router-dom";
 import { Pencil, Plus, QrCode, Repeat, Trash2, UserPlus } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -11,9 +13,9 @@ import { TYPE_ORDER } from "../lib/stats";
 
 // Statut automatique : une activité passe en "terminée" 5 h après sa fin
 // (ou 5 h après son début si aucune heure de fin n'est renseignée).
-const AUTO_CLOSE_HOURS = 5;
+const AUTO_CLOSE_HOURS = 4; // sans heure de fin : l'activité se termine 4 h après son début
 const PUBLIC_SITE_URL = "https://gestion-presences-ca-conseil-ugb.netlify.app";
-const closeTime = (start: string, end: string | null) => new Date(end || start).getTime() + AUTO_CLOSE_HOURS * 3600 * 1000;
+const closeTime = (start: string, end: string | null) => end ? new Date(end).getTime() : new Date(start).getTime() + AUTO_CLOSE_HOURS * 3600 * 1000;
 const effectiveStatus = (a: ActivityType) =>
   a.status === "annulée" ? "annulée"
   : Date.now() >= closeTime(a.start_datetime, a.end_datetime) ? "terminée"
@@ -92,14 +94,14 @@ export default function Activities({ canDelete = false }: { canDelete?: boolean 
         <h2 style={{margin:0,fontSize:17}}>Activités du jour</h2>
         <span className="muted" style={{textTransform:"capitalize"}}>{new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</span>
       </div>
-      {!todayItems.length&&<div className="empty" style={{padding:"18px 0"}}>Aucune activité aujourd'hui.</div>}
+      {!todayItems.length&&<EmptyState compact icon="activities" title="Aucune activité aujourd'hui"/>}
       {todayItems.map(a=>{const st=effectiveStatus(a);return <div className="att-row" key={a.id} style={st==="en cours"?{padding:"11px 12px",margin:"0 -12px",background:"#eef8f2",borderRadius:10}:{padding:"11px 0"}}>
         <div style={{display:"flex",gap:14,alignItems:"center",minWidth:0}}>
           <div style={{fontWeight:800,fontSize:18,minWidth:56}}>{new Date(a.start_datetime).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div>
           <div style={{minWidth:0}}><div className="att-name">{a.name}</div><div className="muted" style={{fontSize:13}}>{typeName(a.activity_type_id)}{a.location?` · ${a.location}`:""}</div></div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0,flexWrap:"wrap"}}>
-          <span className={`badge${st==="en cours"?" active":""}`}>{st==="en cours"?"● en cours":st}</span>
+          <StatusBadge kind={activityKind(st)}/>
           {st!=="annulée"&&<button type="button" className="secondary" onClick={()=>setQr(a)}><QrCode size={16}/> QR</button>}
           <button type="button" className="secondary" onClick={()=>setGuestsFor(a)}><UserPlus size={16}/> Invités{guestCounts[a.id]?` (${guestCounts[a.id]})`:""}</button>
           {st!=="annulée"&&<Link to="/attendance" className="primary" style={{textDecoration:"none"}}>Faire l'appel</Link>}
@@ -108,7 +110,7 @@ export default function Activities({ canDelete = false }: { canDelete?: boolean 
     </div>
 
     <div className="type-tabs">{tabs.map(([k,l])=><button type="button" key={k} className={`type-tab${tab===k?" on":""}`} onClick={()=>setTab(k)}>{l}</button>)}</div>
-    <div className="panel table-wrap"><table><thead><tr><th>Nom</th><th>Type</th><th>Lieu</th><th>Date</th><th>Statut</th><th>Invités</th><th>QR</th><th>Actions</th></tr></thead><tbody>{shown.map(a=><tr key={a.id} style={effectiveStatus(a)==="en cours"?{background:"#eef8f2"}:undefined}><td>{a.name}</td><td><span className="badge">{typeName(a.activity_type_id)}</span></td><td>{a.location||"—"}</td><td>{new Date(a.start_datetime).toLocaleString("fr-FR")}</td><td><span className={`badge${effectiveStatus(a)==="en cours"?" active":""}`}>{effectiveStatus(a)==="en cours"?"● en cours":effectiveStatus(a)}</span></td><td><button type="button" className="secondary" style={{minHeight:34,padding:"5px 12px"}} onClick={()=>setGuestsFor(a)}><UserPlus size={15}/> Invités{guestCounts[a.id]?` (${guestCounts[a.id]})`:""}</button></td><td><button className="icon-btn" title="Afficher le QR code" onClick={()=>setQr(a)}><QrCode size={17}/></button></td><td><button className="icon-btn" title="Modifier" onClick={()=>openEdit(a)}><Pencil size={17}/></button>{canDelete&&<button className="icon-btn danger" title="Supprimer" onClick={()=>remove(a.id)}><Trash2 size={17}/></button>}</td></tr>)}</tbody></table>{!shown.length&&<div className="empty">Aucune activité.</div>}</div>
+    <div className="panel table-wrap"><table><thead><tr><th>Nom</th><th>Type</th><th>Lieu</th><th>Date</th><th>Statut</th><th>Invités</th><th>QR</th><th>Actions</th></tr></thead><tbody>{shown.map(a=><tr key={a.id} style={effectiveStatus(a)==="en cours"?{background:"#eef8f2"}:undefined}><td>{a.name}</td><td><span className="badge">{typeName(a.activity_type_id)}</span></td><td>{a.location||"—"}</td><td>{new Date(a.start_datetime).toLocaleString("fr-FR")}</td><td><span className={`badge${effectiveStatus(a)==="en cours"?" active":""}`}>{effectiveStatus(a)==="en cours"?"● en cours":effectiveStatus(a)}</span></td><td><button type="button" className="secondary" style={{minHeight:34,padding:"5px 12px"}} onClick={()=>setGuestsFor(a)}><UserPlus size={15}/> Invités{guestCounts[a.id]?` (${guestCounts[a.id]})`:""}</button></td><td><button className="icon-btn" title="Afficher le QR code" onClick={()=>setQr(a)}><QrCode size={17}/></button></td><td><button className="icon-btn" title="Modifier" onClick={()=>openEdit(a)}><Pencil size={17}/></button>{canDelete&&<button className="icon-btn danger" title="Supprimer" onClick={()=>remove(a.id)}><Trash2 size={17}/></button>}</td></tr>)}</tbody></table>{!shown.length&&<EmptyState icon="activities" title="Aucune activité" hint="Crée la première activité pour pouvoir faire l'appel." actions={[{label:"Créer une activité",onClick:openNew}]}/>}</div>
     {open&&<div className="modal-backdrop"><form className="modal" onSubmit={save}><div className="modal-head"><h2>{editId?"Modifier l'activité":"Nouvelle activité"}</h2><button type="button" className="icon-btn" onClick={closeForm}>×</button></div>
       <div className="form-grid"><label>Type d'activité<select required value={form.activity_type_id} onChange={e=>{const id=e.target.value;setForm({...form,activity_type_id:id,name:form.name||types.find(t=>t.id===id)?.name||""})}}><option value="">— Choisir —</option>{types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label><label>Nom<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Lieu<input value={form.location} onChange={e=>setForm({...form,location:e.target.value})}/></label><label>Date/heure de début<input required type="datetime-local" value={form.start_datetime} onChange={e=>setForm({...form,start_datetime:e.target.value})}/></label><label>Date/heure de fin<input type="datetime-local" value={form.end_datetime} onChange={e=>setForm({...form,end_datetime:e.target.value})}/></label>{editId&&<label style={{display:"flex",alignItems:"center",gap:8}}><input type="checkbox" style={{width:"auto"}} checked={form.cancelled} onChange={e=>setForm({...form,cancelled:e.target.checked})}/> Activité annulée</label>}</div>
       <p className="muted" style={{margin:"12px 0 0"}}>Le statut est automatique (prévue, en cours, terminée).{limit&&!isNaN(limit.getTime())?` Cette activité passera en « terminée » le ${limit.toLocaleString("fr-FR",{dateStyle:"medium",timeStyle:"short"})}, ${AUTO_CLOSE_HOURS} h après sa fin (ou après son début si aucune fin n'est indiquée).`:""}</p>

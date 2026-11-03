@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
+import StatusBadge from "../components/StatusBadge";
 import Avatar from "../components/Avatar";
 import EmptyState from "../components/EmptyState";
 import { Link } from "react-router-dom";
@@ -53,6 +54,26 @@ function countdown(a: Activity, now: number, g: Group): string {
 
 const GROUP_LABEL: Record<Group, string> = { 0: "En cours", 1: "À venir", 2: "Passées" };
 
+// Petite vibration sur téléphone (ignorée si le navigateur ne la gère pas)
+const buzz = (pattern: number | number[]) => {
+  try { if ("vibrate" in navigator) navigator.vibrate(pattern); } catch { /* sans effet */ }
+};
+
+// Icône qui se dessine au moment où on marque un membre
+function DrawIcon({ kind }: { kind: "check" | "cross" }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {kind === "check"
+        ? <path className="draw-path" pathLength={1} d="M4.5 12.5l5 5L19.5 7" />
+        : <path className="draw-path" pathLength={1} d="M6 6l12 12M18 6L6 18" />}
+    </svg>
+  );
+}
+
+const CONFETTI = Array.from({ length: 14 }, (_, i) => ({
+  left: 6 + i * 6.6, delay: (i % 5) * 0.08, color: ["#d9a066", "#18794e", "#a2443a", "#f3d9b1", "#2556a3"][i % 5], drift: (i % 2 ? 1 : -1) * (8 + (i % 4) * 6),
+}));
+
 export default function Attendance() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [members, setMembers] = useState<MemberName[]>([]);
@@ -64,6 +85,8 @@ export default function Attendance() {
   const [showGuests, setShowGuests] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [fresh, setFresh] = useState<Set<string>>(new Set()); // membres qu'on vient de marquer (animation)
+  const [celebrate, setCelebrate] = useState(false);
 
   // Rafraîchit le compte à rebours et le classement toutes les 30 secondes
   useEffect(() => {
@@ -102,6 +125,8 @@ export default function Attendance() {
   useEffect(() => {
     setShowGuests(false);
     setShowQr(false);
+    setCelebrate(false);
+    setFresh(new Set());
     void loadGuestCount();
   }, [selected]);
 
@@ -129,6 +154,9 @@ export default function Attendance() {
   // Enregistre immédiatement (pas de bouton « Enregistrer »)
   async function setMany(ids: string[], value: Mark) {
     if (!selected || !ids.length) return;
+    buzz(ids.length > 1 ? [30, 40, 30] : value === "Présent" ? 25 : 15);
+    setFresh(new Set(ids));
+    window.setTimeout(() => setFresh(new Set()), 800);
     const before = marks;
     const beforeTimes = scanTimes;
     const now = new Date().toISOString();
@@ -154,6 +182,14 @@ export default function Attendance() {
     } else {
       setInfo("✓ Enregistré");
       setTimeout(() => setInfo(""), 1500);
+      // Tout le monde est marqué : petit message de félicitations
+      const after = { ...before };
+      ids.forEach((id) => (after[id] = value));
+      if (members.length > 0 && members.every((m) => after[m.id]) && !members.every((m) => before[m.id])) {
+        buzz([70, 50, 70, 50, 120]);
+        setCelebrate(true);
+        window.setTimeout(() => setCelebrate(false), 6000);
+      }
     }
   }
 
@@ -201,7 +237,7 @@ export default function Attendance() {
                 <div className="act-card-top">
                   <b>{a.name}</b>
                   {g === 0 && <span className="live-badge"><i className="live-dot" /> En cours</span>}
-                  {a.status === "annulée" && <span className="badge inactive">Annulée</span>}
+                  {a.status === "annulée" && <StatusBadge kind="cancelled" />}
                 </div>
                 <div className="act-card-meta">
                   <span><CalendarDays size={14} />{" "}
@@ -213,7 +249,7 @@ export default function Attendance() {
               </button>
             </div>
           ))}
-          {!sortedActivities.length && <EmptyState icon="activities" title="Aucune activité" hint="Crée une activité depuis la page Activités pour faire l'appel." />}
+          {!sortedActivities.length && <EmptyState icon="activities" title="Aucune activité" hint="Crée une activité depuis la page Activités pour faire l'appel." actions={[{ label: "Créer une activité", to: "/activities" }]} />}
         </div>
       )}
 
@@ -291,6 +327,19 @@ export default function Attendance() {
             </div>
           </div>
 
+          {todo === 0 && members.length > 0 && (
+            <div className={`att-done${celebrate ? " celebrate" : ""}`} role="status">
+              {celebrate && <div className="confetti" aria-hidden="true">{CONFETTI.map((c, i) => (
+                <i key={i} style={{ left: `${c.left}%`, background: c.color, animationDelay: `${c.delay}s`, "--drift": `${c.drift}px` } as CSSProperties} />
+              ))}</div>}
+              <span className="att-done-ico"><DrawIcon kind="check" /></span>
+              <div>
+                <b>{celebrate ? "Bravo, l'appel est terminé ! 🎉" : "Appel complet"}</b>
+                <div>{present} présent{present > 1 ? "s" : ""} · {absent} absent{absent > 1 ? "s" : ""}</div>
+              </div>
+            </div>
+          )}
+
           <div className="att-progress" role="progressbar" aria-valuemin={0} aria-valuemax={members.length} aria-valuenow={present}
             aria-label="Présents">
             <div className="att-progress-bar"><span style={{ width: `${members.length ? Math.round((present / members.length) * 100) : 0}%` }} /></div>
@@ -320,11 +369,11 @@ export default function Attendance() {
                   <div className="att-btns">
                     <button type="button" className={`att-btn p ${v === "Présent" ? "on" : ""}`}
                       aria-pressed={v === "Présent"} onClick={() => setMany([m.id], "Présent")}>
-                      <Check size={18} /> Présent
+                      {fresh.has(m.id) && v === "Présent" ? <DrawIcon kind="check" /> : <Check size={18} />} Présent
                     </button>
                     <button type="button" className={`att-btn a ${v === "Absent" ? "on" : ""}`}
                       aria-pressed={v === "Absent"} onClick={() => setMany([m.id], "Absent")}>
-                      <X size={18} /> Absent
+                      {fresh.has(m.id) && v === "Absent" ? <DrawIcon kind="cross" /> : <X size={18} />} Absent
                     </button>
                   </div>
                 </div>

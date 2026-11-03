@@ -1,4 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
+import StatusBadge from "./StatusBadge";
+import EmptyState from "./EmptyState";
 import { Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -151,7 +153,7 @@ export default function RecurringActivities({
         {error && <div className="error-box" role="alert" style={{ marginBottom: 14 }}>{error}</div>}
 
         {loading && <p className="muted">Chargement…</p>}
-        {!loading && !sorted.length && !error && <div className="empty">Aucune récurrence pour le moment.</div>}
+        {!loading && !sorted.length && !error && <EmptyState compact icon="activities" title="Aucune récurrence" />}
 
         {sorted.length > 0 && (
           <div className="att-list" style={{ marginBottom: 22 }}>
@@ -166,7 +168,7 @@ export default function RecurringActivities({
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  <span className={`badge ${t.active ? "active" : "inactive"}`}>{t.active ? "Active" : "En pause"}</span>
+                  {t.active ? <StatusBadge kind="member" label="Active" /> : <StatusBadge kind="paused" />}
                   <button type="button" className="secondary" onClick={() => toggle(t)}>
                     {t.active ? "Mettre en pause" : "Réactiver"}
                   </button>

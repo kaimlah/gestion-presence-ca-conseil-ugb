@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { LockKeyhole, Mail, LogIn, KeyRound } from "lucide-react";
+import { LockKeyhole, Mail, LogIn, KeyRound, QrCode, ClipboardCheck, Users } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import Footer from "../components/Footer";
 
@@ -106,106 +106,108 @@ export default function Login() {
   }
 
   return (
-    <div className="login-screen">
-      <form className="login-card" onSubmit={submit}>
-        <img
-          className="login-logo"
-          src="/logo.png"
-          alt="Conseil UGB"
-        />
-
-        <h1>Espace membres</h1>
-
-        <p style={{ margin: "8px 0 6px" }}>
-          Moustarchidine Junior
-        </p>
-
-        <div
-          style={{
-            textAlign: "center",
-            margin: "0 0 6px",
-            fontSize: 13,
-            fontWeight: 600,
-            lineHeight: 1.65,
-            color: "#a2443a",
-          }}
-        >
-          <div>Commission Administrative</div>
-          <div>Conseil UGB</div>
-          <div>Comité INTER-UNIVERSITAIRE</div>
-        </div>
-
-        <label htmlFor="login-email">
-          Identifiant
-        </label>
-
-        <div className="input-icon">
-          <Mail size={18} />
-          <input
-            id="login-email"
-            type="text"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username"
-            required
-            placeholder="Ex. votre identifiant ou e-mail"
-            autoCapitalize="none"
-            autoCorrect="off"
-          />
-        </div>
-
-        <label htmlFor="login-password">
-          Mot de passe
-        </label>
-
-        <div className="input-icon">
-          <LockKeyhole size={18} />
-          <input
-            id="login-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-            placeholder="Ton mot de passe"
-          />
-        </div>
-
-        {error && (
-          <div className="error-box" role="alert">
-            {error}
+    <div className="auth-split">
+      <aside className="auth-hero">
+        <div className="auth-hero-inner">
+          <img className="auth-hero-logo" src="/logo.png" alt="Conseil UGB" />
+          <h2 className="auth-hero-org">Moustarchidine Junior</h2>
+          <div className="auth-hero-lines">
+            <div>Commission Administrative</div>
+            <div>Conseil UGB</div>
+            <div>Comité INTER-UNIVERSITAIRE</div>
           </div>
-        )}
 
-        {message && (
-          <div className="success-box" role="status">
-            {message}
+          <div className="auth-hero-rule" />
+
+          <p className="auth-hero-welcome">
+            Bienvenue. Gère tes membres, tes activités et tes présences en toute simplicité.
+          </p>
+
+          <ul className="auth-hero-features">
+            <li><QrCode size={18} /> Appel rapide par QR code</li>
+            <li><ClipboardCheck size={18} /> Suivi des présences et des absences</li>
+            <li><Users size={18} /> Cartes et fiches de membres</li>
+          </ul>
+        </div>
+      </aside>
+
+      <main className="auth-panel">
+        <form className="auth-form" onSubmit={submit}>
+          <h1>Connexion</h1>
+          <p className="auth-sub">Accède à l'espace membres</p>
+
+          <label htmlFor="login-email">
+            Identifiant
+          </label>
+
+          <div className="input-icon">
+            <Mail size={18} />
+            <input
+              id="login-email"
+              type="text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              required
+              placeholder="Ex. votre identifiant ou e-mail"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
           </div>
-        )}
 
-        <button
-          type="submit"
-          className="primary full"
-          disabled={loading || resetLoading}
-        >
-          <LogIn size={18} />
-          {loading ? "Connexion…" : "Se connecter"}
-        </button>
+          <label htmlFor="login-password">
+            Mot de passe
+          </label>
 
-        <button
-          type="button"
-          className="forgot-password"
-          onClick={forgotPassword}
-          disabled={loading || resetLoading}
-        >
-          <KeyRound size={16} />
-          {resetLoading
-            ? "Envoi en cours…"
-            : "Mot de passe oublié ?"}
-        </button>
+          <div className="input-icon">
+            <LockKeyhole size={18} />
+            <input
+              id="login-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              placeholder="Ton mot de passe"
+            />
+          </div>
 
-        <Footer />
-      </form>
+          {error && (
+            <div className="error-box" role="alert">
+              {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="success-box" role="status">
+              {message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="primary full"
+            disabled={loading || resetLoading}
+          >
+            <LogIn size={18} />
+            {loading ? "Connexion…" : "Se connecter"}
+          </button>
+
+          <button
+            type="button"
+            className="forgot-password"
+            onClick={forgotPassword}
+            disabled={loading || resetLoading}
+          >
+            <KeyRound size={16} />
+            {resetLoading
+              ? "Envoi en cours…"
+              : "Mot de passe oublié ?"}
+          </button>
+
+          <Footer />
+        </form>
+      </main>
     </div>
   );
 }

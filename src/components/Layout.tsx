@@ -1,5 +1,5 @@
 import { CSSProperties, ReactNode, useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity, BarChart3, ClipboardCheck, FileDown, LayoutDashboard,
   LogIn, LogOut, UserX, Menu, Settings, Users, UserCog, X
@@ -29,6 +29,7 @@ export default function Layout({ children, session }: { children: ReactNode; ses
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(session?.user.email ?? "Visiteur");
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const navLinks: ReadonlyArray<readonly [string, string, typeof Users, string]> = session
     ? [...publicLinks, ...privateLinks]
@@ -84,7 +85,7 @@ export default function Layout({ children, session }: { children: ReactNode; ses
           <div className="topbar-title">Moustarchidine Junior</div>
           <div className="topbar-user">{name}</div>
         </header>
-        <div className="content">{children}</div>
+        <div className="content"><div className="page-enter" key={pathname}>{children}</div></div>
         <Footer />
       </main>
     </div>

@@ -1,6 +1,8 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import StatusBadge from "../components/StatusBadge";
+import EmptyState from "../components/EmptyState";
 import { Link } from "react-router-dom";
-import { AlertTriangle, CalendarCheck, ClipboardCheck, ClipboardList, Percent, QrCode, ScanLine, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, ClipboardList, QrCode, ScanLine, Users } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import PageHeader from "../components/PageHeader";
 import { fmtDate, goudiStreaks, loadStats, type StatsData } from "../lib/stats";
@@ -30,6 +32,64 @@ function Bar({ value, color }: { value: number; color: string }) {
     <div style={{ height: 8, borderRadius: 99, background: "#eef2f6", overflow: "hidden" }}>
       <div className="bar-fill" style={{ width: `${Math.min(100, Math.max(0, value))}%`, height: "100%", background: color }} />
     </div>
+  );
+}
+
+// Anneau de progression animé (le trait se remplit au chargement)
+function Ring({ value, color, center, size = 118 }: { value: number | null; color: string; center: ReactNode; size?: number }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => { const t = window.setTimeout(() => setOn(true), 60); return () => window.clearTimeout(t); }, []);
+  const stroke = 11, r = (size - stroke) / 2, c = 2 * Math.PI * r;
+  const pct = value === null ? 0 : Math.min(100, Math.max(0, value));
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)" }} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1e8e4" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={on ? c * (1 - pct / 100) : c}
+          style={{ transition: "stroke-dashoffset .9s cubic-bezier(.22,.8,.3,1)" }} />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", lineHeight: 1.1 }}>{center}</div>
+    </div>
+  );
+}
+
+// Courbe d'évolution : aire dégradée, points colorés selon le taux, dates en bas
+function Trend({ items }: { items: { id: string; name: string; start: string; rate: number }[] }) {
+  const W = 360, H = 170, padX = 22, top = 24, bottom = 26;
+  const n = items.length;
+  const x = (i: number) => (n === 1 ? W / 2 : padX + (i * (W - 2 * padX)) / (n - 1));
+  const y = (rate: number) => top + (1 - rate / 100) * (H - top - bottom);
+  const pts = items.map((a, i) => [x(i), y(a.rate)] as const);
+  const line = pts.map(([px, py], i) => `${i ? "L" : "M"}${px.toFixed(1)},${py.toFixed(1)}`).join(" ");
+  const area = `${line} L${pts[n - 1][0].toFixed(1)},${H - bottom} L${pts[0][0].toFixed(1)},${H - bottom} Z`;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Évolution du taux de présence" style={{ display: "block" }}>
+      <defs>
+        <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#a2443a" stopOpacity=".28" />
+          <stop offset="100%" stopColor="#a2443a" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[0, 50, 100].map((g) => (
+        <g key={g}>
+          <line x1={padX} x2={W - padX} y1={y(g)} y2={y(g)} stroke="#eadfda" strokeDasharray="3 4" />
+          <text x={4} y={y(g) + 3} fontSize="9" fill="#9b8c87">{g}%</text>
+        </g>
+      ))}
+      {n > 1 && <path d={area} fill="url(#trend-fill)" />}
+      {n > 1 && <path d={line} fill="none" stroke="#a2443a" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
+      {items.map((a, i) => (
+        <g key={a.id}>
+          <title>{`${a.name} · ${fmtDate(a.start)} : ${a.rate}%`}</title>
+          <circle cx={pts[i][0]} cy={pts[i][1]} r="5.5" fill="#fff" stroke={rateColor(a.rate)} strokeWidth="3" />
+          <text x={pts[i][0]} y={pts[i][1] - 11} fontSize="10" fontWeight="700" textAnchor="middle" fill={rateColor(a.rate)}>{a.rate}%</text>
+          <text x={pts[i][0]} y={H - 8} fontSize="9" textAnchor="middle" fill="#8a7b76">
+            {new Date(a.start).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+          </text>
+        </g>
+      ))}
+    </svg>
   );
 }
 
@@ -68,8 +128,16 @@ export default function Dashboard() {
   const [typeNames, setTypeNames] = useState<Map<string, string>>(new Map());
   const [inactive, setInactive] = useState(0);
   const [error, setError] = useState("");
+  const [firstName, setFirstName] = useState("");
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: u }) => {
+      const id = u.user?.id;
+      if (!id) return;
+      supabase.from("profiles").select("first_name").eq("id", id).maybeSingle()
+        .then(({ data: p }) => setFirstName(((p as { first_name?: string } | null)?.first_name || "").trim()));
+    });
+
     loadStats().then(setData).catch((e) => setError(e.message));
 
     const since = new Date(Date.now() - HOURS_3).toISOString();
@@ -155,32 +223,6 @@ export default function Dashboard() {
       color: undefined as string | undefined,
     },
     {
-      label: "Présence globale",
-      value: v.global === null ? "—" : `${v.global}%`,
-      sub: `${v.held.length} appel${v.held.length > 1 ? "s" : ""} effectué${v.held.length > 1 ? "s" : ""}`,
-      Icon: Percent,
-      color: v.global === null ? undefined : rateColor(v.global),
-    },
-    {
-      label: "Présence ce mois-ci",
-      value: v.month === null ? "—" : `${v.month}%`,
-      sub:
-        delta === null
-          ? v.monthCount
-            ? `${v.monthCount} appel${v.monthCount > 1 ? "s" : ""}`
-            : "Aucun appel ce mois-ci"
-          : `${delta >= 0 ? "+" : ""}${delta} pts vs mois dernier`,
-      Icon: TrendingUp,
-      color: delta === null ? undefined : delta >= 0 ? GREEN : RED,
-    },
-    {
-      label: "Dernière activité",
-      value: v.last ? `${v.last.present}/${v.last.total}` : "—",
-      sub: v.last ? v.last.name : "Aucun appel effectué",
-      Icon: CalendarCheck,
-      color: undefined,
-    },
-    {
       label: "Appels à régulariser",
       value: v.toFix.length,
       sub: "activités passées sans présences",
@@ -200,8 +242,38 @@ export default function Dashboard() {
     <>
       <PageHeader
         title="Tableau de bord"
-        description="Ce qui est à faire, ce qui arrive et comment évolue la présence."
+        description={`Salam${firstName ? `, ${firstName}` : ""} · ${new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}. Ce qui est à faire, ce qui arrive et comment évolue la présence.`}
       />
+
+      <div className="dash-rings">
+        {[
+          {
+            label: "Présence globale", value: v.global, color: v.global === null ? "#c9b8b2" : rateColor(v.global),
+            center: <strong style={{ fontSize: 26, fontWeight: 800 }}>{v.global === null ? "—" : `${v.global}%`}</strong>,
+            sub: `${v.held.length} appel${v.held.length > 1 ? "s" : ""} effectué${v.held.length > 1 ? "s" : ""}`,
+          },
+          {
+            label: "Ce mois-ci", value: v.month, color: v.month === null ? "#c9b8b2" : rateColor(v.month),
+            center: <strong style={{ fontSize: 26, fontWeight: 800 }}>{v.month === null ? "—" : `${v.month}%`}</strong>,
+            sub: delta === null ? (v.monthCount ? `${v.monthCount} appel${v.monthCount > 1 ? "s" : ""}` : "Aucun appel ce mois-ci")
+              : `${delta >= 0 ? "▲ +" : "▼ "}${delta} pts vs mois dernier`,
+            subColor: delta === null ? undefined : delta >= 0 ? GREEN : RED,
+          },
+          {
+            label: "Dernière activité", value: v.last ? v.last.rate : null, color: v.last ? rateColor(v.last.rate) : "#c9b8b2",
+            center: v.last ? <div><strong style={{ fontSize: 22, fontWeight: 800 }}>{v.last.present}</strong><div style={{ fontSize: 12, color: GRAY }}>/ {v.last.total}</div></div> : <strong style={{ fontSize: 26 }}>—</strong>,
+            sub: v.last ? v.last.name : "Aucun appel effectué",
+          },
+        ].map((r) => (
+          <div className="dash-ring" key={r.label}>
+            <Ring value={r.value} color={r.color} center={r.center} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: GRAY }}>{r.label}</div>
+              <div style={{ marginTop: 4, fontSize: 13, fontWeight: 700, color: ("subColor" in r && r.subColor) || undefined, wordBreak: "break-word" }}>{r.sub}</div>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div className="stats-grid">
         {cards.map(({ label, value, sub, Icon, color }) => (
@@ -234,7 +306,7 @@ export default function Dashboard() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, marginTop: 16 }}>
         <Box title="Prochaines activités" link={{ to: "/activities", label: "Toutes les activités" }}>
-          {upcoming.length === 0 && <div className="empty">Aucune activité prévue.</div>}
+          {upcoming.length === 0 && <EmptyState compact icon="activities" title="Aucune activité prévue" actions={[{ label: "Créer une activité", to: "/activities" }]} />}
           {upcoming.map((a) => {
             const started = new Date(a.start_datetime).getTime() < Date.now();
             return (
@@ -251,7 +323,7 @@ export default function Dashboard() {
                 }
                 right={
                   started ? (
-                    <span className="badge">En cours</span>
+                    <StatusBadge kind="live" />
                   ) : (
                     <span className="badge">{typeNames.get(a.activity_type_id || "") || "—"}</span>
                   )
@@ -262,7 +334,7 @@ export default function Dashboard() {
         </Box>
 
         <Box title="Dernière activité avec appel" link={{ to: "/statistics", label: "Statistiques" }}>
-          {!v.last && <div className="empty">Aucun appel effectué pour le moment.</div>}
+          {!v.last && <EmptyState compact icon="attendance" title="Aucun appel pour le moment" actions={[{ label: "Faire l'appel", to: "/attendance" }]} />}
           {v.last && (
             <>
               <div style={{ fontWeight: 700, fontSize: 16 }}>{v.last.name}</div>
@@ -280,43 +352,14 @@ export default function Dashboard() {
         </Box>
 
         <Box title="Évolution de la présence (8 derniers appels)">
-          {v.recent.length === 0 && <div className="empty">Pas encore de données.</div>}
+          {v.recent.length === 0 && <EmptyState compact icon="stats" title="Pas encore de données" />}
           {v.recent.length > 0 && (
-            <>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 150 }}>
-                {v.recent.map((a) => (
-                  <div
-                    key={a.id}
-                    title={`${a.name} · ${fmtDate(a.start)} : ${a.rate}%`}
-                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end" }}
-                  >
-                    <span style={{ fontSize: 11, fontWeight: 700, color: rateColor(a.rate), marginBottom: 3 }}>{a.rate}%</span>
-                    <div
-                      className="chart-bar"
-                      style={{
-                        width: "100%",
-                        maxWidth: 36,
-                        height: Math.max(4, Math.round(a.rate * 1.1)),
-                        background: rateColor(a.rate),
-                        borderRadius: "6px 6px 0 0",
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 8, borderTop: `1px solid ${LINE}`, paddingTop: 4 }}>
-                {v.recent.map((a) => (
-                  <span key={a.id} style={{ flex: 1, textAlign: "center", fontSize: 10, color: GRAY }}>
-                    {new Date(a.start).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                ))}
-              </div>
-            </>
+            <Trend items={v.recent} />
           )}
         </Box>
 
         <Box title="Présence par type d'activité">
-          {data.types.filter((t) => t.held > 0).length === 0 && <div className="empty">Pas encore de données.</div>}
+          {data.types.filter((t) => t.held > 0).length === 0 && <EmptyState compact icon="stats" title="Pas encore de données" />}
           {data.types
             .filter((t) => t.held > 0)
             .map((t) => (
@@ -335,7 +378,7 @@ export default function Dashboard() {
 
         <Box title="Membres à relancer" link={{ to: "/absences", label: "Voir tout" }}>
           {v.streaks.length === 0 && (
-            <div className="empty">Aucun membre n'a 3 absences consécutives aux GOUDI ALJUMAH.</div>
+            <EmptyState compact tone="ok" icon="ok" title="Aucune alerte" hint="Aucun membre n'a 3 absences consécutives aux GOUDI ALJUMAH." />
           )}
           {v.streaks.slice(0, 5).map((s) => (
             <Row
@@ -347,7 +390,7 @@ export default function Dashboard() {
         </Box>
 
         <Box title="Appels à régulariser" link={{ to: "/attendance", label: "Saisir les présences" }}>
-          {v.toFix.length === 0 && <div className="empty">Tout est à jour.</div>}
+          {v.toFix.length === 0 && <EmptyState compact tone="ok" icon="ok" title="Tout est à jour" />}
           {v.toFix.slice(0, 5).map((a) => (
             <Row
               key={a.id}
@@ -364,7 +407,7 @@ export default function Dashboard() {
         </Box>
 
         <Box title="Les plus assidus">
-          {v.held.length === 0 && <div className="empty">Pas encore de données.</div>}
+          {v.held.length === 0 && <EmptyState compact icon="stats" title="Pas encore de données" />}
           {v.held.length > 0 &&
             v.assidus.map((x, i) => (
               <Row
