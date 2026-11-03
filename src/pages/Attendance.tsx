@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import Avatar from "../components/Avatar";
+import EmptyState from "../components/EmptyState";
 import { Link } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Check, Clock, MapPin, QrCode, ScanLine, Search, UserPlus, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -211,7 +213,7 @@ export default function Attendance() {
               </button>
             </div>
           ))}
-          {!sortedActivities.length && <div className="empty">Aucune activité.</div>}
+          {!sortedActivities.length && <EmptyState icon="activities" title="Aucune activité" hint="Crée une activité depuis la page Activités pour faire l'appel." />}
         </div>
       )}
 
@@ -305,7 +307,8 @@ export default function Attendance() {
               const v = marks[m.id];
               return (
                 <div className={`att-row${v === "Présent" ? " is-p" : v === "Absent" ? " is-a" : ""}`} key={m.id}>
-                  <span className="att-name">
+                  <span className="att-name" style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                    <Avatar first={m.first_name} last={m.last_name} />
                     {scanOrder[m.id] ? <b style={{ marginRight: 8 }}>{scanOrder[m.id]}.</b> : null}
                     {m.last_name} {m.first_name}
                     {scanTimes[m.id] && v === "Présent" && (
@@ -327,7 +330,7 @@ export default function Attendance() {
                 </div>
               );
             })}
-            {!shown.length && <div className="empty">Aucun membre.</div>}
+            {!shown.length && <EmptyState icon={query.trim() ? "search" : "members"} title={query.trim() ? "Aucun résultat" : "Aucun membre"} hint={query.trim() ? "Vérifie l'orthographe ou efface la recherche." : undefined} />}
           </div>
         </>
       )}

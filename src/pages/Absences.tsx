@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import Avatar from "../components/Avatar";
+import EmptyState from "../components/EmptyState";
 import { Copy, FileSpreadsheet, FileText, MessageCircle } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import PageHeader from "../components/PageHeader";
@@ -199,7 +201,7 @@ export default function Absences() {
                   <input type="checkbox" checked={!excluded.has(id)} onChange={() => toggleOne(id)} style={{ width: 18, height: 18, padding: 0 }} aria-label={`Sélectionner ${s.member.first_name} ${s.member.last_name}`} />
                 </td>
                 <td>{s.member.last_name}</td>
-                <td>{s.member.first_name}</td>
+                <td><span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}><Avatar first={s.member.first_name} last={s.member.last_name} />{s.member.first_name}</span></td>
                 <td><span className="badge inactive">{s.current}</span></td>
                 <td>{s.max}</td>
                 <td>{phonesLoaded ? (phones[id] || "—") : "…"}</td>
@@ -217,7 +219,7 @@ export default function Absences() {
             );
           })}</tbody>
         </table>
-        {!rows.length && <div className="empty">Aucun membre dans ce cas.</div>}
+        {!rows.length && <EmptyState tone="ok" icon="ok" title="Aucun membre dans ce cas" hint="Personne n'atteint ce nombre d'absences consécutives." />}
       </div>
       <p className="muted">« Série en cours » = absences à la suite jusqu'à la dernière séance. Dans une séance où l'appel a été fait, un membre non marqué est compté absent .</p>
     </>
