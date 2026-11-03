@@ -498,3 +498,19 @@ body { overflow-x: hidden; }
 .att-btn.on { animation: att-pop .22s ease; }
 @keyframes att-pop { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .live-dot, .att-btn.on { animation: none; } }
+
+/* ---------- Menu : icône colorée par module ---------- */
+.nav-ico {
+  display: inline-grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 10px;
+  color: var(--nav-c, #eadfda);
+  background: color-mix(in srgb, var(--nav-c, #eadfda) 16%, transparent);
+  transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.nav-link .nav-ico svg { opacity: 1; color: inherit; }
+.nav-link:hover .nav-ico { background: color-mix(in srgb, var(--nav-c, #eadfda) 26%, transparent); transform: scale(1.06); }
+.nav-link.active .nav-ico {
+  background: var(--nav-c, var(--gold)); color: #1d1412;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--nav-c, var(--gold)) 45%, transparent);
+}
+.nav-link.active svg { color: inherit; }
+.nav-link.active::before { background: var(--nav-c, var(--gold)); }

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { CSSProperties, ReactNode, useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Activity, BarChart3, ClipboardCheck, FileDown, LayoutDashboard,
@@ -8,20 +8,21 @@ import { supabase } from "../lib/supabase";
 import Footer from "./Footer";
 import type { Session } from "@supabase/supabase-js";
 
+// Couleur propre à chaque module (4e valeur) : l'icône du menu est teintée pour se repérer plus vite.
 const publicLinks = [
-  ["/dashboard", "Tableau de bord", LayoutDashboard],
-  ["/activities", "Activités", Activity],
-  ["/attendance", "Présences", ClipboardCheck],
-  ["/statistics", "Statistiques", BarChart3],
-  ["/absences", "Absences Goudi", UserX],
+  ["/dashboard", "Tableau de bord", LayoutDashboard, "#e6b672"],
+  ["/activities", "Activités", Activity, "#6aa7ff"],
+  ["/attendance", "Présences", ClipboardCheck, "#4cc38a"],
+  ["/statistics", "Statistiques", BarChart3, "#b794f6"],
+  ["/absences", "Absences Goudi", UserX, "#ff8a7a"],
 ] as const;
 
 // Réservé aux utilisateurs connectés
 const privateLinks = [
-  ["/members", "Membres", Users],
-  ["/exports", "Exports", FileDown],
-  ["/users", "Utilisateurs", UserCog],
-  ["/settings", "Paramètres", Settings],
+  ["/members", "Membres", Users, "#e58a7d"],
+  ["/exports", "Exports", FileDown, "#4fd1c5"],
+  ["/users", "Utilisateurs", UserCog, "#8fa0ff"],
+  ["/settings", "Paramètres", Settings, "#c9b8b2"],
 ] as const;
 
 export default function Layout({ children, session }: { children: ReactNode; session: Session | null }) {
@@ -29,7 +30,7 @@ export default function Layout({ children, session }: { children: ReactNode; ses
   const [name, setName] = useState(session?.user.email ?? "Visiteur");
   const navigate = useNavigate();
 
-  const navLinks: ReadonlyArray<readonly [string, string, typeof Users]> = session
+  const navLinks: ReadonlyArray<readonly [string, string, typeof Users, string]> = session
     ? [...publicLinks, ...privateLinks]
     : [...publicLinks];
   const userId = session?.user.id;
@@ -60,9 +61,10 @@ export default function Layout({ children, session }: { children: ReactNode; ses
           <button className="icon-btn mobile-only" onClick={() => setOpen(false)}><X size={20}/></button>
         </div>
         <nav>
-          {navLinks.map(([to, label, Icon]) => (
-            <NavLink key={to} to={to} onClick={() => setOpen(false)} className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
-              <Icon size={19}/><span>{label}</span>
+          {navLinks.map(([to, label, Icon, color]) => (
+            <NavLink key={to} to={to} onClick={() => setOpen(false)} style={{ "--nav-c": color } as CSSProperties}
+              className={({isActive}) => isActive ? "nav-link active" : "nav-link"}>
+              <span className="nav-ico"><Icon size={18}/></span><span>{label}</span>
             </NavLink>
           ))}
         </nav>
